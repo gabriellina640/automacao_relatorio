@@ -22,7 +22,7 @@ def desativar_corretor(run):
 
 def formatar_paragrafo_hibrido(paragrafo, texto_resolucao, texto_assunto):
     """
-    Cria um parágrafo com formatação mista:
+    Formatação Exata:
     - Resolução: Arial 12, Negrito, Sublinhado.
     - Assunto: Arial 12, Normal.
     """
@@ -30,7 +30,7 @@ def formatar_paragrafo_hibrido(paragrafo, texto_resolucao, texto_assunto):
     paragrafo.paragraph_format.space_after = Pt(12) 
     paragrafo.paragraph_format.line_spacing = 1.15  
     
-    # 1. Parte da Resolução (Negrito + Sublinhado)
+    # --- PARTE 1: RESOLUÇÃO (Negrito + Sublinhado) ---
     run_res = paragrafo.add_run(texto_resolucao)
     run_res.font.name = 'Arial'
     run_res.font.size = Pt(12)
@@ -38,7 +38,7 @@ def formatar_paragrafo_hibrido(paragrafo, texto_resolucao, texto_assunto):
     run_res.font.underline = True
     desativar_corretor(run_res)
     
-    # 2. Separador e Assunto (Normal)
+    # --- PARTE 2: ASSUNTO (Normal) ---
     run_assunto = paragrafo.add_run(f" - {texto_assunto}")
     run_assunto.font.name = 'Arial'
     run_assunto.font.size = Pt(12)
@@ -64,7 +64,7 @@ def formatar_celula_tabela(cell, texto, negrito=False):
             desativar_corretor(run)
 
 # ==============================================================================
-# 2. LÓGICA DO BOTÃO 1: PAUTA (Mantida Times 8 - Tabela)
+# 2. LÓGICA DO BOTÃO 1: PAUTA (Mantida)
 # ==============================================================================
 
 def limpar_nome_sessao(texto_completo):
@@ -128,7 +128,7 @@ def gerar_word_pauta(dados, caminho_saida):
     doc.save(caminho_saida)
 
 # ==============================================================================
-# 3. LÓGICA DO BOTÃO 2: RESOLUÇÕES (ARIAL 12 - TEXTO CORRIDO)
+# 3. LÓGICA DO BOTÃO 2: RESOLUÇÕES (INTELIGENTE - DETECTA CABEÇALHO)
 # ==============================================================================
 
 def extrair_resolucoes_dados(caminho_arquivo):
@@ -136,34 +136,49 @@ def extrair_resolucoes_dados(caminho_arquivo):
     lista_dados = []
     ano_atual = datetime.now().year
     
-    # Lê TODAS as tabelas do documento, não importa a página
+    # Itera sobre CADA tabela do documento
     for table in doc.tables:
-        for row in table.rows:
+        
+        # --- PASSO 1: DETECTAR SE É A TABELA CERTA ---
+        eh_tabela_alvo = False
+        indice_inicio_dados = 0
+        
+        # Olha as 3 primeiras linhas para achar o cabeçalho (pode ter título antes)
+        # Limita a 3 linhas para não perder tempo
+        linhas_para_checar = table.rows[:4] 
+        
+        for i, row in enumerate(linhas_para_checar):
+            if len(row.cells) >= 4:
+                # Pega o texto das colunas chave (ignorando maiúsculas/minúsculas)
+                # Coluna 1 (índice 1) deve ter "Resolução"
+                # Coluna 3 (índice 3) deve ter "Assunto"
+                texto_col_res = row.cells[1].text.lower()
+                texto_col_assunto = row.cells[3].text.lower()
+                
+                if "resolução" in texto_col_res and "assunto" in texto_col_assunto:
+                    eh_tabela_alvo = True
+                    indice_inicio_dados = i + 1 # Começa a pegar dados na linha seguinte
+                    break
+        
+        # Se essa tabela NÃO tiver o cabeçalho certo, pula para a próxima tabela do doc
+        if not eh_tabela_alvo:
+            continue
+
+        # --- PASSO 2: EXTRAIR DADOS DA TABELA ALVO ---
+        # Começa a varrer apenas a partir da linha depois do cabeçalho
+        for row in table.rows[indice_inicio_dados:]:
             if len(row.cells) >= 4:
                 
                 raw_resolucao = row.cells[1].text.strip()
                 assunto_cru = row.cells[3].text.strip()
                 
-                # --- FILTROS DE SEGURANÇA (Para arquivos gigantes) ---
-                
-                # 1. Ignora linhas onde o Assunto contém "Virtual" (cabeçalho da Pauta)
-                if "virtual" in assunto_cru.lower() and len(row.cells) > 4:
-                     continue 
-                
-                # 2. Ignora linhas onde o Assunto é muito curto (ruído/tabelas vazias)
-                if len(assunto_cru) < 5:
-                    continue
-
-                # 3. Verifica se a Coluna 1 realmente parece um número
+                # Validação Extra: Coluna 1 deve ter números
                 eh_numero = any(char.isdigit() for char in raw_resolucao)
                 
-                # 4. Ignora se for o próprio cabeçalho da tabela ("Nº Resolução")
-                if "resolução" in raw_resolucao.lower() and not eh_numero:
-                    continue
-
-                if raw_resolucao and eh_numero:
+                # Ignora linhas vazias ou cabeçalhos repetidos
+                if raw_resolucao and eh_numero and assunto_cru:
                     
-                    # Limpeza e Adição do Ano
+                    # Formatação
                     num_limpo = raw_resolucao.replace("Resolução", "").replace("nº", "").strip()
                     
                     if "/" in num_limpo:
@@ -225,13 +240,13 @@ def acao_email():
     arquivo = filedialog.askopenfilename(title="Selecione o Doc de Resoluções (.docx)", filetypes=[("Word", "*.docx")])
     if not arquivo: return
     try:
-        lbl_status.config(text="Varrendo documento inteiro...", fg="blue")
+        lbl_status.config(text="Procurando Tabela de Resoluções...", fg="blue")
         root.update()
         
         dados = extrair_resolucoes_dados(arquivo)
         
         if not dados:
-            messagebox.showwarning("Aviso", "Nenhuma resolução encontrada.\nVerifique se o arquivo contém a tabela esperada.")
+            messagebox.showwarning("Aviso", "Nenhuma resolução encontrada.\nO programa procurou por uma tabela com cabeçalho 'Resolução' e 'Assunto'.")
             lbl_status.config(text="Aguardando...", fg="black")
             return
             
@@ -247,7 +262,7 @@ def acao_email():
 
 # Configuração da Janela
 root = tk.Tk()
-root.title("Automação MP - Final v8 (Alta Capacidade)")
+root.title("Automação MP - Final v10 (Detector de Tabelas)")
 root.geometry("450x300")
 root.configure(bg="#f0f0f0")
 
