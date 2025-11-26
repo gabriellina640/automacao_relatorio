@@ -262,7 +262,7 @@ def acao_email():
 
 # Configuração da Janela
 root = tk.Tk()
-root.title("Automação MP - Final v10 (Detector de Tabelas)")
+root.title("Automação MP - (Detector de Tabelas)")
 root.geometry("450x300")
 root.configure(bg="#f0f0f0")
 
@@ -271,7 +271,7 @@ tk.Label(root, text="Selecione a automação desejada:", bg="#f0f0f0", font=("Ar
 btn_pauta = tk.Button(root, text="1. Pauta (Processos em Tabela)", command=acao_pauta, bg="#2b2b2b", fg="white", font=("Times New Roman", 11, "bold"), width=35, height=2)
 btn_pauta.pack(pady=10)
 
-btn_email = tk.Button(root, text="2. Resoluções (Texto Formatado)", command=acao_email, bg="#005f99", fg="white", font=("Arial", 11, "bold"), width=35, height=2)
+btn_email = tk.Button(root, text="2. Resoluções (Texto para Email)", command=acao_email, bg="#005f99", fg="white", font=("Arial", 11, "bold"), width=35, height=2)
 btn_email.pack(pady=10)
 
 lbl_status = tk.Label(root, text="Aguardando...", bg="#f0f0f0", fg="#555")
