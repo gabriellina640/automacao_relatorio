@@ -182,9 +182,9 @@ def extrair_resolucoes_dados(caminho_arquivo):
                     num_limpo = raw_resolucao.replace("Resolução", "").replace("nº", "").strip()
                     
                     if "/" in num_limpo:
-                        resolucao_final = f"Resolução nº {num_limpo}"
+                        resolucao_final = f"Resolução nº{num_limpo}"
                     else:
-                        resolucao_final = f"Resolução nº {num_limpo}/{ano_atual}"
+                        resolucao_final = f"Resolução nº{num_limpo}/{ano_atual}"
 
                     lista_dados.append({
                         "res": resolucao_final,
